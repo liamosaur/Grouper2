@@ -87,10 +87,40 @@ namespace Grouper2
         private JObject GetAssessedRegistrySettings(JObject gppCategory)
         {
             JProperty gppRegSettingsProp = new JProperty("RegSettings", gppCategory["Registry"]);
+            if(gppRegSettingsProp == null)
+            {
+                return null;
+            }
+
+            Dictionary<string, Dictionary<string, string>> assessedRegsDict = new Dictionary<string, Dictionary<string, string>>();
             JObject assessedGppRegSettings = new JObject(gppRegSettingsProp);
+            foreach (JToken gppRegSettings in assessedGppRegSettings.SelectTokens("RegSettings"))
+            {
+                foreach (JToken gppRegSetting in gppRegSettings)
+                {
+                    Dictionary<string, string> assessedRegDict = new Dictionary<string, string> { { "InterestLevel", "3" } };
+                    JToken gppRegProps = gppRegSetting["Properties"];
+                    string regAction = GetActionString(gppRegProps["@action"].ToString());
+                    assessedRegDict.Add("Action", regAction);
+
+                    assessedRegDict.Add("Name", gppRegSetting["@name"].ToString());
+                    assessedRegDict.Add("Status", gppRegSetting["@status"].ToString());
+
+                    assessedRegDict.Add("Hive", gppRegProps["@hive"].ToString());
+                    assessedRegDict.Add("Key", gppRegProps["@key"].ToString());
+                    assessedRegDict.Add("Property name", gppRegProps["@name"].ToString());
+                    assessedRegDict.Add("Type", gppRegProps["@type"].ToString());
+                    assessedRegDict.Add("Value", gppRegProps["@value"].ToString());
+
+                    //TODO maybe like, check some values against a list of interesting values?
+
+                    assessedRegsDict.Add(gppRegSetting["@uid"].ToString(), assessedRegDict);
+                }
+            }
+
+            JProperty assessedRegsJson = new JProperty("gpp Registry settings", JToken.FromObject(assessedRegsDict));
+
             return assessedGppRegSettings;
-            //Utility.DebugWrite("gpp is about RegistrySettings");
-            //Console.WriteLine(gppRegSettings["Registry"]);
         }
 
         private JObject GetAssessedNTServices(JObject gppCategory)
@@ -152,9 +182,9 @@ namespace Grouper2
             Dictionary<string, Dictionary<string, string>> assessedGroupsDict = new Dictionary<string, Dictionary<string, string>>();
             Dictionary<string, Dictionary<string, string>> assessedUsersDict = new Dictionary<string, Dictionary<string, string>>();
 
-            foreach (JToken gppUser in gppCategory.SelectTokens("User"))
+            foreach (JToken gppUsers in gppCategory.SelectTokens("User"))
             {
-                //foreach (JToken gppUser in gppUsers) {
+                foreach (JToken gppUser in gppUsers) {
                     // dictionary for results from this specific user.
                     Dictionary<string, string> assessedUserDict = new Dictionary<string, string>
                     {
@@ -164,8 +194,8 @@ namespace Grouper2
                     JToken gppUserProps = gppUser["Properties"];
 
                     // check what the entry is doing to the user and turn it into real word
-                    string userAction = gppUserProps["@action"].ToString();
-                    userAction = GetActionString(userAction);
+                    string userAction = GetActionString(gppUserProps["@action"].ToString());
+                    assessedUserDict.Add("Action", userAction);
 
                     // get the username and a bunch of other details:
                     assessedUserDict.Add("Name", gppUser["@name"].ToString());
@@ -176,7 +206,7 @@ namespace Grouper2
                     assessedUserDict.Add("Description", gppUserProps["@description"].ToString());
                     assessedUserDict.Add("Full Name", gppUserProps["@fullName"].ToString());
                     assessedUserDict.Add("New Name", gppUserProps["@newName"].ToString());
-                    assessedUserDict.Add("Action", userAction);
+                    
 
                     // check for cpasswords
                     string cpassword = gppUserProps["@cpassword"].ToString();
@@ -191,14 +221,14 @@ namespace Grouper2
 
                     // add to the output dict with a uid to keep it unique.
                     assessedUsersDict.Add(gppUser["@uid"].ToString(), assessedUserDict);
-                //}
+                }
             }
 
             // repeat the process for Groups
-            foreach (JToken gppGroup in gppCategory.SelectTokens("Group"))
+            foreach (JToken gppGroups in gppCategory.SelectTokens("Group"))
             {
-                //foreach (JToken gppGroup in gppGroups)
-                //{
+                foreach (JToken gppGroup in gppGroups)
+                {
                     //dictionary for results from this specific group
                     Dictionary<string, string> assessedGroupDict = new Dictionary<string, string>
                     {
@@ -227,7 +257,7 @@ namespace Grouper2
 
                     // add to the output dict with a uid to keep it unique.
                     assessedGroupsDict.Add(gppGroup["@uid"].ToString(), assessedGroupDict);
-                //}
+                }
             }
 
             // cast our Dictionaries back into JObjects
